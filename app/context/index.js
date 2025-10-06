@@ -9,14 +9,12 @@ import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 // 0. Setup queryClient
 const queryClient = new QueryClient();
 
-const projectId = "YOUR_PROJECT_ID";
+const projectId = "b0c99c09c190fffec9a27bc2678a0c12";
 
 // 2. Create a metadata object
 const metadata = {
-  name: "Mini App",
-  description: "Mini App with Wallet Connect",
-  url: "https://example.com", // Update this with your domain
-  icons: ["https://avatars.githubusercontent.com/u/179229932"],
+  name: "TipBase",
+  description: "Tip your community on Base with USDC",
 };
 
 // 3. Set the networks

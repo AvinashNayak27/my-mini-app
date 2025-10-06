@@ -1,1 +1,107 @@
 @import "tailwindcss";
+
+:root {
+  --color-primary: #93827f;
+  --color-secondary: #f3f9d2;
+  --color-accent: #bdc4a7;
+  --color-dark: #2f2f2f;
+  --color-mint: #92b4a7;
+}
+
+* {
+  font-family: var(--font-orbitron), system-ui, sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg, #f3f9d2 0%, #bdc4a7 50%, #92b4a7 100%);
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+/* Glassmorphism styles */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+}
+
+.glass-navbar {
+  background: linear-gradient(to top, 
+    #f3f9d2 0%,
+    rgba(243, 249, 210, 0.98) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 -8px 32px 0 rgba(31, 38, 135, 0.2);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px 0 rgba(31, 38, 135, 0.25);
+}
+
+/* Liquid glass animation */
+@keyframes liquid {
+  0%, 100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  50% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+  }
+}
+
+.liquid-blob {
+  animation: liquid 8s ease-in-out infinite;
+}
+
+/* Slide up animation for popup */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(147, 130, 127, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(147, 130, 127, 0.7);
+}
