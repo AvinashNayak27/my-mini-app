@@ -1,28 +1,38 @@
 "use client";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFarcaster } from "./context";
-
-// Mock data for followers/following
-const mockUsers = [
-  { id: 1, name: "Alice Chen", username: "@alicechen", avatar: "AC", balance: "1,234", followers: "2.3k" },
-  { id: 2, name: "Bob Martinez", username: "@bobmart", avatar: "BM", balance: "856", followers: "1.8k" },
-  { id: 3, name: "Carol Davis", username: "@carold", avatar: "CD", balance: "3,421", followers: "5.1k" },
-  { id: 4, name: "David Kim", username: "@davidk", avatar: "DK", balance: "672", followers: "890" },
-  { id: 5, name: "Emma Wilson", username: "@emmaw", avatar: "EW", balance: "2,109", followers: "3.4k" },
-  { id: 6, name: "Frank Lee", username: "@franklee", avatar: "FL", balance: "1,567", followers: "2.1k" },
-];
 
 export default function Home() {
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
-  const { user: farcasterUser, isLoading: farcasterLoading, error: farcasterError } = useFarcaster();
+  const { 
+    user: farcasterUser, 
+    isLoading: farcasterLoading, 
+    error: farcasterError,
+    followers,
+    following,
+    followersLoading,
+    followingLoading,
+    followersError,
+    followingError,
+    fetchFollowers,
+    fetchFollowing
+  } = useFarcaster();
   
   const [activeView, setActiveView] = useState("home");
   const [selectedTab, setSelectedTab] = useState("followers");
   const [tipAmount, setTipAmount] = useState("1");
   const [selectedUser, setSelectedUser] = useState(null);
   const [showTipPopup, setShowTipPopup] = useState(false);
+
+  // Fetch followers and following when user is available
+  useEffect(() => {
+    if (farcasterUser?.fid) {
+      fetchFollowers(farcasterUser.fid);
+      fetchFollowing(farcasterUser.fid);
+    }
+  }, [farcasterUser?.fid]);
 
   // Format address for display
   const formatAddress = (addr) => {
@@ -38,7 +48,8 @@ export default function Home() {
 
   const sendTip = () => {
     if (tipAmount && selectedUser) {
-      alert(`Sending ${tipAmount} USDC to ${selectedUser.name}`);
+      const userName = selectedUser.displayName || selectedUser.username || 'Unknown';
+      alert(`Sending ${tipAmount} USDC to ${userName}`);
       setTipAmount("1");
       setSelectedUser(null);
       setShowTipPopup(false);
@@ -119,25 +130,66 @@ export default function Home() {
 
             {/* User List */}
             <div className="space-y-3">
-              {mockUsers.map((user) => (
-                <div key={user.id} className="glass-card rounded-2xl p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#2f2f2f] to-[#93827f] flex items-center justify-center text-white font-bold text-sm">
-                      {user.avatar}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-[#2f2f2f] text-base">{user.name}</h3>
-                      <p className="text-[#93827f] text-xs">{user.username}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleTip(user)}
-                    className="px-6 py-2.5 bg-[#2f2f2f] text-[#f3f9d2] rounded-xl font-bold text-sm hover:bg-[#2f2f2f]/90 transition-all active:scale-95"
-                  >
-                    TIP NOW
-                  </button>
+              {/* Loading State */}
+              {(followersLoading || followingLoading) && (
+                <div className="glass-card rounded-2xl p-6 text-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-[#93827f] border-t-transparent animate-spin mx-auto mb-2"></div>
+                  <p className="text-[#93827f] text-sm">Loading {selectedTab}...</p>
                 </div>
-              ))}
+              )}
+
+              {/* Error State */}
+              {((selectedTab === "followers" && followersError) || (selectedTab === "following" && followingError)) && (
+                <div className="glass-card rounded-2xl p-6 text-center">
+                  <p className="text-red-500 text-sm">
+                    Error loading {selectedTab}: {selectedTab === "followers" ? followersError : followingError}
+                  </p>
+                </div>
+              )}
+
+              {/* Users List */}
+              {!followersLoading && !followingLoading && (
+                <>
+                  {(selectedTab === "followers" ? followers : following).length === 0 ? (
+                    <div className="glass-card rounded-2xl p-6 text-center">
+                      <p className="text-[#93827f] text-sm">No {selectedTab} found</p>
+                    </div>
+                  ) : (
+                    (selectedTab === "followers" ? followers : following).map((user) => (
+                      <div key={user.fid} className="glass-card rounded-2xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {user.pfp?.url ? (
+                            <img 
+                              src={user.pfp.url} 
+                              alt={user.displayName || user.username} 
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#2f2f2f] to-[#93827f] flex items-center justify-center text-white font-bold text-sm">
+                              {(user.displayName || user.username || 'U').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-bold text-[#2f2f2f] text-base">
+                              {user.displayName || user.username || 'Unknown'}
+                            </h3>
+                            <p className="text-[#93827f] text-xs">@{user.username || 'unknown'}</p>
+                            <p className="text-[#93827f] text-xs">
+                              {user.followerCount ? `${user.followerCount} followers` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleTip(user)}
+                          className="px-6 py-2.5 bg-[#2f2f2f] text-[#f3f9d2] rounded-xl font-bold text-sm hover:bg-[#2f2f2f]/90 transition-all active:scale-95"
+                        >
+                          TIP NOW
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -282,12 +334,22 @@ export default function Home() {
             {/* Handle bar */}
             
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2f2f2f] to-[#93827f] flex items-center justify-center text-white font-bold text-xl">
-                {selectedUser.avatar}
-              </div>
+              {selectedUser.pfp?.url ? (
+                <img 
+                  src={selectedUser.pfp.url} 
+                  alt={selectedUser.displayName || selectedUser.username} 
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2f2f2f] to-[#93827f] flex items-center justify-center text-white font-bold text-xl">
+                  {(selectedUser.displayName || selectedUser.username || 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
               <div>
-                <p className="font-bold text-[#2f2f2f] text-xl">{selectedUser.name}</p>
-                <p className="text-sm text-[#93827f]">{selectedUser.username}</p>
+                <p className="font-bold text-[#2f2f2f] text-xl">
+                  {selectedUser.displayName || selectedUser.username || 'Unknown'}
+                </p>
+                <p className="text-sm text-[#93827f]">@{selectedUser.username || 'unknown'}</p>
               </div>
             </div>
 
