@@ -2,6 +2,23 @@
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
 import { useState, useEffect } from "react";
 import { useFarcaster } from "./context";
+import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseUnits } from "viem";
+
+// USDC contract on Base
+const USDC_CONTRACT_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const USDC_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "transfer",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
 
 export default function Home() {
   const { open } = useAppKit();
@@ -17,7 +34,8 @@ export default function Home() {
     followersError,
     followingError,
     fetchFollowers,
-    fetchFollowing
+    fetchFollowing,
+    fetchUserAddress
   } = useFarcaster();
   
   const [activeView, setActiveView] = useState("home");
@@ -25,6 +43,15 @@ export default function Home() {
   const [tipAmount, setTipAmount] = useState("1");
   const [selectedUser, setSelectedUser] = useState(null);
   const [showTipPopup, setShowTipPopup] = useState(false);
+  const [isSendingTip, setIsSendingTip] = useState(false);
+  const [tipSuccess, setTipSuccess] = useState(false);
+  const [tipError, setTipError] = useState(null);
+
+  // Wagmi hooks for contract interaction
+  const { writeContract, data: hash, error: writeError, isPending: isWritePending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   // Fetch followers and following when user is available
   useEffect(() => {
@@ -33,6 +60,27 @@ export default function Home() {
       fetchFollowing(farcasterUser.fid);
     }
   }, [farcasterUser?.fid]);
+
+  // Handle transaction status changes
+  useEffect(() => {
+    if (isConfirmed) {
+      setTipSuccess(true);
+      setIsSendingTip(false);
+      setTipError(null);
+      // Auto close popup after success
+      setTimeout(() => {
+        closeTipPopup();
+        setTipSuccess(false);
+      }, 2000);
+    }
+  }, [isConfirmed]);
+
+  useEffect(() => {
+    if (writeError) {
+      setTipError(writeError.message);
+      setIsSendingTip(false);
+    }
+  }, [writeError]);
 
   // Format address for display
   const formatAddress = (addr) => {
@@ -46,13 +94,41 @@ export default function Home() {
     setShowTipPopup(true);
   };
 
-  const sendTip = () => {
-    if (tipAmount && selectedUser) {
-      const userName = selectedUser.displayName || selectedUser.username || 'Unknown';
-      alert(`Sending ${tipAmount} USDC to ${userName}`);
-      setTipAmount("1");
-      setSelectedUser(null);
-      setShowTipPopup(false);
+  const sendTip = async () => {
+    if (!tipAmount || !selectedUser || !isConnected) {
+      if (!isConnected) {
+        open({ view: "Connect" });
+      }
+      return;
+    }
+
+    setIsSendingTip(true);
+    setTipError(null);
+    setTipSuccess(false);
+
+    try {
+      // Get recipient's Ethereum address
+      const recipientAddress = await fetchUserAddress(selectedUser.fid);
+      
+      if (!recipientAddress) {
+        throw new Error("Could not find recipient's Ethereum address");
+      }
+
+      // Convert tip amount to USDC units (6 decimals)
+      const amount = parseUnits(tipAmount, 6);
+
+      // Execute the transfer
+      writeContract({
+        address: USDC_CONTRACT_ADDRESS,
+        abi: USDC_ABI,
+        functionName: 'transfer',
+        args: [recipientAddress, amount],
+      });
+
+    } catch (error) {
+      console.error('Error sending tip:', error);
+      setTipError(error.message);
+      setIsSendingTip(false);
     }
   };
 
@@ -60,6 +136,9 @@ export default function Home() {
     setShowTipPopup(false);
     setSelectedUser(null);
     setTipAmount("1");
+    setIsSendingTip(false);
+    setTipSuccess(false);
+    setTipError(null);
   };
 
   // Show loading screen while Farcaster is initializing
@@ -391,12 +470,36 @@ export default function Home() {
               </button>
             </div>
 
+            {/* Error Message */}
+            {tipError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-xl text-sm">
+                {tipError}
+              </div>
+            )}
+
+            {/* Success Message */}
+            {tipSuccess && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-xl text-sm">
+                Tip sent successfully! 🎉
+              </div>
+            )}
+
+            {/* Transaction Status */}
+            {(isSendingTip || isWritePending || isConfirming) && (
+              <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded-xl text-sm">
+                {isWritePending && "Preparing transaction..."}
+                {isConfirming && "Confirming transaction..."}
+                {isSendingTip && !isWritePending && !isConfirming && "Getting recipient address..."}
+              </div>
+            )}
+
             <button
               onClick={sendTip}
-              disabled={!tipAmount}
+              disabled={!tipAmount || isSendingTip || isWritePending || isConfirming || !isConnected}
               className="w-full py-4 bg-[#2f2f2f] text-[#f3f9d2] rounded-2xl font-bold text-lg hover:bg-[#2f2f2f]/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
             >
-              SEND TIP
+              {!isConnected ? "CONNECT WALLET" : 
+               (isSendingTip || isWritePending || isConfirming) ? "SENDING..." : "SEND TIP"}
             </button>
           </div>
         </div>

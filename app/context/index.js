@@ -54,6 +54,7 @@ const FarcasterContext = createContext({
   followingError: null,
   fetchFollowers: null,
   fetchFollowing: null,
+  fetchUserAddress: null,
 });
 
 export function useFarcaster() {
@@ -164,6 +165,22 @@ function FarcasterProvider({ children }) {
     }
   }, [followingLoaded]);
 
+  const fetchUserAddress = useCallback(async (fid) => {
+    if (!fid) return null;
+    
+    try {
+      const response = await fetch(`/api/address?fid=${fid}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.result?.address?.address || null;
+    } catch (err) {
+      console.error('Error fetching user address:', err);
+      return null;
+    }
+  }, []);
+
   return (
     <FarcasterContext.Provider value={{ 
       user, 
@@ -177,7 +194,8 @@ function FarcasterProvider({ children }) {
       followersError,
       followingError,
       fetchFollowers,
-      fetchFollowing
+      fetchFollowing,
+      fetchUserAddress
     }}>
       {children}
     </FarcasterContext.Provider>
