@@ -1,6 +1,7 @@
 "use client";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
 import { useState } from "react";
+import { useFarcaster } from "./context";
 
 // Mock data for followers/following
 const mockUsers = [
@@ -15,6 +16,7 @@ const mockUsers = [
 export default function Home() {
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
+  const { user: farcasterUser, isLoading: farcasterLoading, error: farcasterError } = useFarcaster();
   
   const [activeView, setActiveView] = useState("home");
   const [selectedTab, setSelectedTab] = useState("followers");
@@ -48,6 +50,21 @@ export default function Home() {
     setSelectedUser(null);
     setTipAmount("1");
   };
+
+  // Show loading screen while Farcaster is initializing
+  if (farcasterLoading) {
+    return (
+      <main className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2f2f2f] to-[#93827f] flex items-center justify-center text-white font-bold text-xl mb-4 mx-auto animate-pulse">
+            T
+          </div>
+          <h1 className="text-2xl font-bold text-[#2f2f2f] mb-2">TIPBASE</h1>
+          <p className="text-[#93827f] text-sm">Connecting to Farcaster...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen relative overflow-hidden pb-20">
@@ -129,6 +146,45 @@ export default function Home() {
         {activeView === "stats" && (
           <div className="px-4 space-y-4">
             <h2 className="text-2xl font-bold text-[#2f2f2f] mb-4">YOUR STATS</h2>
+            
+            {/* Farcaster User Info */}
+            {farcasterLoading ? (
+              <div className="glass-strong rounded-2xl p-6 text-center">
+                <p className="text-[#93827f] text-sm">Loading Farcaster profile...</p>
+              </div>
+            ) : farcasterError ? (
+              <div className="glass-strong rounded-2xl p-6 text-center">
+                <p className="text-[#93827f] text-sm">Error loading profile: {farcasterError}</p>
+              </div>
+            ) : farcasterUser ? (
+              <div className="glass-strong rounded-2xl p-6">
+                <p className="text-[#93827f] text-xs mb-4 font-semibold tracking-wide">FARCASTER PROFILE</p>
+                <div className="flex items-center gap-4 mb-4">
+                  {farcasterUser.pfpUrl ? (
+                    <img 
+                      src={farcasterUser.pfpUrl} 
+                      alt="Profile" 
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2f2f2f] to-[#93827f] flex items-center justify-center text-white font-bold text-xl">
+                      {farcasterUser.displayName?.charAt(0) || farcasterUser.username?.charAt(0) || 'U'}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-bold text-[#2f2f2f] text-lg">
+                      {farcasterUser.displayName || farcasterUser.username || 'Unknown'}
+                    </p>
+                    <p className="text-[#93827f] text-sm">@{farcasterUser.username || 'unknown'}</p>
+                    <p className="text-[#93827f] text-xs">FID: {farcasterUser.fid}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="glass-strong rounded-2xl p-6 text-center">
+                <p className="text-[#93827f] text-sm">No Farcaster profile found</p>
+              </div>
+            )}
             
             <div className="glass-strong rounded-2xl p-6">
               <p className="text-[#93827f] text-xs mb-2 font-semibold tracking-wide">TOTAL TIPPED</p>
